@@ -46,6 +46,7 @@ coverage/
 .coverage
 htmlcov/
 .cursor
+docs/
 
 # Misc
 *.pem
