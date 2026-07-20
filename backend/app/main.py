@@ -11,14 +11,22 @@ from app.core.logging import configure_logging, get_logger
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger = get_logger(__name__)
     settings = get_settings()
+    paths = sorted(
+        {
+            getattr(route, "path", "")
+            for route in app.routes
+            if getattr(route, "path", None)
+        }
+    )
     logger.info(
-        "startup service=%s version=%s env=%s",
+        "startup service=%s version=%s env=%s routes=%s",
         settings.app_name,
         settings.app_version,
         settings.app_env,
+        paths,
     )
     yield
     logger.info("shutdown service=%s", settings.app_name)

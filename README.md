@@ -2,7 +2,7 @@
 
 Document question answering over uploaded PDFs. Users upload a document, the system indexes it, and chat answers are grounded in retrieved chunks with source citations.
 
-**Stack:** Next.js 15 (TypeScript, Tailwind) · FastAPI (Python 3.12) · ChromaDB · OpenAI
+**Stack:** Next.js 15 (TypeScript, Tailwind) · FastAPI (Python 3.12) · ChromaDB · Groq / OpenAI
 
 ---
 
@@ -31,7 +31,7 @@ Browser (Next.js)
     ▼
 FastAPI (/api/v1)
     ├── POST /documents/upload  → validate → disk → chunk → ChromaDB
-    ├── POST /chat              → retrieve → filter → OpenAI → answer + sources
+    ├── POST /chat              → retrieve → filter → LLM (Groq/OpenAI) → answer + sources
     └── GET  /health
 ```
 
@@ -40,7 +40,7 @@ FastAPI (/api/v1)
 | Frontend | Upload UI, chat UI, API client |
 | Backend services | Validation, PDF processing, vector store, RAG orchestration |
 | ChromaDB | Embeddings + similarity search (persistent local store) |
-| OpenAI | Answer generation (`gpt-4o-mini` by default) |
+| LLM | Answer generation via Groq (`llama-3.3-70b-versatile` default) or OpenAI |
 
 Details: [docs/architecture.md](docs/architecture.md), [docs/data-flow.md](docs/data-flow.md)
 
@@ -52,13 +52,13 @@ Details: [docs/architecture.md](docs/architecture.md), [docs/data-flow.md](docs/
 
 - Node.js 20+
 - Python 3.12 + [uv](https://github.com/astral-sh/uv)
-- OpenAI API key (required for chat when relevant context exists)
+- Groq API key — or OpenAI key if `LLM_PROVIDER=openai`
 
 ### 1. Environment
 
 ```bash
 cp .env.example .env
-# Set OPENAI_API_KEY in .env
+# Set GROQ_API_KEY in .env (or OPENAI_API_KEY if using openai)
 
 cp frontend/.env.example frontend/.env.local
 ```
@@ -106,9 +106,12 @@ Root `.env` (backend reads `.env` / `../.env`):
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | Chunking | `1000` / `200` |
 | `CHROMA_PERSIST_DIR` | Vector DB path | `storage/chroma` |
 | `CHROMA_COLLECTION_NAME` | Collection name | `documents` |
-| `LLM_PROVIDER` | Provider key (`openai` only) | `openai` |
-| `OPENAI_API_KEY` | OpenAI auth | _(required for generation)_ |
-| `OPENAI_MODEL` | Chat model | `gpt-4o-mini` |
+| `LLM_PROVIDER` | `groq` / `openai` | `groq` |
+| `GROQ_API_KEY` | Groq auth | _(required when provider is groq)_ |
+| `GROQ_MODEL` | Groq model id | `llama-3.3-70b-versatile` |
+| `GROQ_BASE_URL` | Groq OpenAI-compatible base | `https://api.groq.com/openai/v1` |
+| `OPENAI_API_KEY` | OpenAI auth | _(required when provider is openai)_ |
+| `OPENAI_MODEL` | OpenAI chat model | `gpt-4o-mini` |
 | `RETRIEVAL_TOP_K` | Neighbor count | `5` |
 | `RETRIEVAL_MAX_DISTANCE` | Cosine distance cutoff | `0.7` |
 
@@ -131,7 +134,7 @@ Upload PDF → extract text → chunk (+ page metadata)
 Question  → embed query → top-k similarity search
           → drop weak matches (distance filter)
           → if none: refuse without LLM
-          → else: prompt OpenAI with context → answer + sources
+          → else: prompt LLM (Groq/OpenAI) with context → answer + sources
 ```
 
 | Stage | Implementation |
@@ -140,58 +143,5 @@ Question  → embed query → top-k similarity search
 | Chunk | Character windows (`CHUNK_SIZE` / `CHUNK_OVERLAP`) |
 | Embed/store | ChromaDB default embedding function, cosine space |
 | Retrieve | Top-k + `RETRIEVAL_MAX_DISTANCE` |
-| Generate | OpenAI chat completions, temperature `0` |
+| Generate | OpenAI-compatible chat API (Groq or OpenAI), temperature `0` |
 | Cite | Deduped `{ filename, page_number }` |
-
-More detail: [docs/rag-pipeline.md](docs/rag-pipeline.md)
-
----
-
-## Deployment instructions
-
-### Backend (Docker)
-
-```bash
-cd backend
-docker build -t mesh-rag-api .
-docker run --rm -p 8000:8000 \
-  -e OPENAI_API_KEY=your_key \
-  -e CORS_ORIGINS=https://your-frontend-domain.com \
-  -e APP_ENV=production \
-  -v mesh-rag-data:/data \
-  mesh-rag-api
-```
-
-Container defaults: `UPLOAD_DIR=/data/uploads`, `CHROMA_PERSIST_DIR=/data/chroma`.
-
-### Frontend
-
-```bash
-cd frontend
-cp .env.production.example .env.production
-# Set NEXT_PUBLIC_API_URL to your public API base (…/api/v1)
-
-npm run build
-npm run start
-```
-
-`NEXT_PUBLIC_API_URL` is inlined at build time.
-
-No docker-compose/CI is included by design.
-
----
-
-## Documentation index
-
-| Doc | Purpose |
-|-----|---------|
-| [docs/architecture.md](docs/architecture.md) | Architecture (beginner → technical) |
-| [docs/data-flow.md](docs/data-flow.md) | Upload and chat flows |
-| [docs/rag-pipeline.md](docs/rag-pipeline.md) | RAG stages and trade-offs |
-| [docs/technical-decisions.md](docs/technical-decisions.md) | Decision log |
-| [docs/development-notes.md](docs/development-notes.md) | Implementation history |
-| [docs/design-note.md](docs/design-note.md) | Problem breakdown and exclusions |
-| [docs/ai-usage-note.md](docs/ai-usage-note.md) | How AI assistance was used |
-| [docs/self-review.md](docs/self-review.md) | Limitations and next-week plan |
-| [docs/interview-preparation.md](docs/interview-preparation.md) | Interview Q&A |
-| [docs/future-improvements.md](docs/future-improvements.md) | Production backlog |

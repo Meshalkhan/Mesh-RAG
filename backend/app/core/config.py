@@ -28,9 +28,12 @@ class Settings(BaseSettings):
     chunk_overlap: int = 200
     chroma_persist_dir: str = "storage/chroma"
     chroma_collection_name: str = "documents"
-    llm_provider: str = "openai"
+    llm_provider: str = "groq"
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.3-70b-versatile"
+    groq_base_url: str = "https://api.groq.com/openai/v1"
     retrieval_top_k: int = 5
     retrieval_max_distance: float = 0.7
 

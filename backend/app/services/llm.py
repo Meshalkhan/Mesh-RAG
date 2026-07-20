@@ -14,18 +14,30 @@ class LLMProvider(Protocol):
     async def generate(self, *, system_prompt: str, user_prompt: str) -> str: ...
 
 
-class OpenAIProvider:
-    """OpenAI chat completions provider."""
+class OpenAICompatibleProvider:
+    """Chat completions via an OpenAI-compatible HTTP API."""
 
-    def __init__(self, *, api_key: str, model: str) -> None:
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        model: str,
+        provider_name: str,
+        missing_key_message: str,
+        base_url: str | None = None,
+    ) -> None:
         if not api_key.strip():
             raise AppError(
-                "OPENAI_API_KEY is not configured",
+                missing_key_message,
                 code="llm_not_configured",
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        self._client = AsyncOpenAI(api_key=api_key)
+        client_kwargs: dict[str, str] = {"api_key": api_key}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+        self._client = AsyncOpenAI(**client_kwargs)
         self._model = model
+        self._provider_name = provider_name
 
     async def generate(self, *, system_prompt: str, user_prompt: str) -> str:
         try:
@@ -39,7 +51,9 @@ class OpenAIProvider:
             )
         except Exception as exc:
             logger.exception(
-                "llm_generate_failed provider=openai model=%s", self._model
+                "llm_generate_failed provider=%s model=%s",
+                self._provider_name,
+                self._model,
             )
             raise AppError(
                 "Failed to generate an answer from the LLM",
@@ -60,11 +74,24 @@ class OpenAIProvider:
 
 def create_llm_provider(settings: Settings) -> LLMProvider:
     provider = settings.llm_provider.lower().strip()
+
     if provider == "openai":
-        return OpenAIProvider(
+        return OpenAICompatibleProvider(
             api_key=settings.openai_api_key,
             model=settings.openai_model,
+            provider_name="openai",
+            missing_key_message="OPENAI_API_KEY is not configured",
         )
+
+    if provider == "groq":
+        return OpenAICompatibleProvider(
+            api_key=settings.groq_api_key,
+            model=settings.groq_model,
+            provider_name="groq",
+            missing_key_message="GROQ_API_KEY is not configured",
+            base_url=settings.groq_base_url,
+        )
+
     raise AppError(
         f"Unsupported LLM provider: {settings.llm_provider}",
         code="unsupported_llm_provider",
