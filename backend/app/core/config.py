@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     )
     log_level: str = "INFO"
     log_json: bool = True
+    upload_dir: str = "storage/uploads"
+    max_upload_bytes: int = 25 * 1024 * 1024
+    chunk_size: int = 1000
+    chunk_overlap: int = 200
 
     @field_validator("cors_origins", mode="before")
     @classmethod

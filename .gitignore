@@ -49,3 +49,6 @@ htmlcov/
 # Misc
 *.pem
 .vercel
+
+# Uploaded documents
+backend/storage/
