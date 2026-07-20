@@ -19,10 +19,10 @@ async def upload_document(
     file: Annotated[UploadFile, File(description="PDF file to upload")],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> SuccessResponse[DocumentUploadData]:
-    """Accept a PDF upload, extract text, and return chunked content.
+    """Accept a PDF upload, extract text, chunk it, and index embeddings.
 
     Files are stored temporarily under the configured upload directory.
-    Embeddings and retrieval are handled in later steps.
+    Chunks are embedded and persisted in ChromaDB for later retrieval.
     """
     service = DocumentService(settings)
     data = await service.upload_pdf(file)

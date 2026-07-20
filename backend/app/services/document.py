@@ -9,6 +9,7 @@ from app.core.exceptions import AppError
 from app.core.logging import get_logger
 from app.schemas.document import DocumentUploadData
 from app.services.document_processor import DocumentProcessor
+from app.services.vector_store import VectorStore
 
 logger = get_logger(__name__)
 
@@ -23,6 +24,7 @@ class DocumentService:
         self._settings = settings
         self._upload_dir = Path(settings.upload_dir)
         self._processor = DocumentProcessor(settings)
+        self._vector_store = VectorStore(settings)
 
     async def upload_pdf(self, file: UploadFile) -> DocumentUploadData:
         filename = self._validate_filename(file.filename)
@@ -42,13 +44,15 @@ class DocumentService:
         )
 
         chunks = await self._processor.process(stored_path, filename)
+        ids = await self._vector_store.add_documents(chunks)
 
         return DocumentUploadData(
             filename=filename,
             size=size,
             content_type=content_type,
-            status="processed",
+            status="indexed",
             chunks=chunks,
+            indexed_count=len(ids),
         )
 
     def _validate_filename(self, filename: str | None) -> str:

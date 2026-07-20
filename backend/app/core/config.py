@@ -26,6 +26,13 @@ class Settings(BaseSettings):
     max_upload_bytes: int = 25 * 1024 * 1024
     chunk_size: int = 1000
     chunk_overlap: int = 200
+    chroma_persist_dir: str = "storage/chroma"
+    chroma_collection_name: str = "documents"
+    llm_provider: str = "openai"
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+    retrieval_top_k: int = 5
+    retrieval_max_distance: float = 0.7
 
     @field_validator("cors_origins", mode="before")
     @classmethod
