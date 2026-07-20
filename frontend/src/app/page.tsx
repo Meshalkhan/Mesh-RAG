@@ -1,7 +1,11 @@
+import { FeatureCards } from "@/components/home/feature-cards";
+import { HeroSection } from "@/components/home/hero-section";
+
 export default function Home() {
   return (
-    <main className="flex min-h-screen items-center justify-center">
-      <h1 className="text-2xl font-semibold tracking-tight">Mesh RAG</h1>
+    <main>
+      <HeroSection />
+      <FeatureCards />
     </main>
   );
 }
