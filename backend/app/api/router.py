@@ -1,7 +1,10 @@
 from fastapi import APIRouter
 
-from app.api.routes import health, test
+from app.api.v1.router import router as v1_router
+from app.core.config import Settings
 
-api_router = APIRouter()
-api_router.include_router(health.router)
-api_router.include_router(test.router)
+
+def create_api_router(settings: Settings) -> APIRouter:
+    api_router = APIRouter()
+    api_router.include_router(v1_router, prefix=settings.api_v1_prefix)
+    return api_router

@@ -1,7 +1,7 @@
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Literal
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -12,11 +12,16 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_name: str = "mesh-rag"
-    app_env: str = "development"
+    app_name: str = "mesh-rag-api"
+    app_version: str = "0.1.0"
+    app_env: Literal["development", "staging", "production"] = "development"
     debug: bool = False
-    api_prefix: str = "/api"
-    cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:3000"]
+    api_v1_prefix: str = "/api/v1"
+    cors_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["http://localhost:3000"]
+    )
+    log_level: str = "INFO"
+    log_json: bool = True
 
     @field_validator("cors_origins", mode="before")
     @classmethod

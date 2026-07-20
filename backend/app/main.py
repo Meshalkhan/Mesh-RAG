@@ -1,18 +1,42 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
-from app.api.router import api_router
+from app.api.router import create_api_router
 from app.core.config import get_settings
 from app.core.cors import add_cors_middleware
+from app.core.exceptions import register_exception_handlers
+from app.core.logging import configure_logging, get_logger
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    logger = get_logger(__name__)
+    settings = get_settings()
+    logger.info(
+        "startup service=%s version=%s env=%s",
+        settings.app_name,
+        settings.app_version,
+        settings.app_env,
+    )
+    yield
+    logger.info("shutdown service=%s", settings.app_name)
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    configure_logging(settings)
+
     app = FastAPI(
         title=settings.app_name,
+        version=settings.app_version,
         debug=settings.debug,
+        lifespan=lifespan,
     )
     add_cors_middleware(app, settings)
-    app.include_router(api_router, prefix=settings.api_prefix)
+    register_exception_handlers(app)
+    app.include_router(create_api_router(settings))
     return app
 
 
