@@ -7,9 +7,7 @@ import {
 import { Container } from "@/components/layout/container";
 import type { Feature } from "@/types/feature";
 
-const features: Feature[] = [
-
-];
+const features: Feature[] = [];
 
 export function FeatureCards() {
   return (
@@ -20,7 +18,7 @@ export function FeatureCards() {
             Capabilities
           </h2>
           <p className="text-muted-foreground">
-          Core building blocks for grounded document intelligence.
+            Core building blocks for grounded document intelligence.
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

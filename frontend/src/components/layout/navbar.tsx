@@ -2,6 +2,11 @@ import Link from "next/link";
 
 import { Container } from "@/components/layout/container";
 
+const links = [
+  { href: "/upload", label: "Upload" },
+  { href: "/chat", label: "Chat" },
+] as const;
+
 export function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-md">
@@ -12,6 +17,17 @@ export function Navbar() {
         >
           Mesh RAG
         </Link>
+        <nav aria-label="Primary" className="flex items-center gap-5">
+          {links.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
       </Container>
     </header>
   );

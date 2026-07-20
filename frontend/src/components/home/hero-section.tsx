@@ -1,4 +1,6 @@
-import { Button, buttonVariants } from "@/components/ui/button";
+import Link from "next/link";
+
+import { buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/layout/container";
 import { cn } from "@/lib/utils";
 
@@ -18,13 +20,20 @@ export function HeroSection() {
             Mesh RAG
           </h1>
           <p className="max-w-xl text-lg leading-relaxed text-muted-foreground text-pretty">
-            
+            A document intelligence system that enables grounded AI
+            conversations over your data.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Button size="lg" disabled>
-            Get started
-          </Button>
+          <Link href="/upload" className={cn(buttonVariants({ size: "lg" }))}>
+            Upload document
+          </Link>
+          <Link
+            href="/chat"
+            className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
+          >
+            Open chat
+          </Link>
         </div>
       </Container>
     </section>
