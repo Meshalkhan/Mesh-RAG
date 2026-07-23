@@ -1,11 +1,5 @@
-import { FeatureCards } from "@/components/home/feature-cards";
-import { HeroSection } from "@/components/home/hero-section";
+import { Workspace } from "@/components/workspace/workspace";
 
-export default function Home() {
-  return (
-    <main>
-      <HeroSection />
-      <FeatureCards />
-    </main>
-  );
+export default function HomePage() {
+  return <Workspace />;
 }

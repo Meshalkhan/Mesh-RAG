@@ -1,6 +1,8 @@
 import type {
   ApiErrorBody,
   ChatResponse,
+  DocumentDeleteResponse,
+  DocumentListResponse,
   DocumentUploadResponse,
 } from "@/types/api";
 
@@ -32,6 +34,19 @@ async function parseError(response: Response): Promise<ApiError> {
   }
 }
 
+export async function listDocuments(): Promise<DocumentListResponse> {
+  const response = await fetch(`${API_BASE_URL}/documents`, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw await parseError(response);
+  }
+
+  return (await response.json()) as DocumentListResponse;
+}
+
 export async function uploadDocument(
   file: File,
 ): Promise<DocumentUploadResponse> {
@@ -50,13 +65,33 @@ export async function uploadDocument(
   return (await response.json()) as DocumentUploadResponse;
 }
 
-export async function askQuestion(question: string): Promise<ChatResponse> {
+export async function deleteDocument(
+  filename: string,
+): Promise<DocumentDeleteResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/documents/${encodeURIComponent(filename)}`,
+    {
+      method: "DELETE",
+    },
+  );
+
+  if (!response.ok) {
+    throw await parseError(response);
+  }
+
+  return (await response.json()) as DocumentDeleteResponse;
+}
+
+export async function askQuestion(
+  question: string,
+  filename: string,
+): Promise<ChatResponse> {
   const response = await fetch(`${API_BASE_URL}/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify({ question, filename }),
   });
 
   if (!response.ok) {

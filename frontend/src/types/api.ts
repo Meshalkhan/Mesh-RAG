@@ -20,6 +20,27 @@ export type DocumentUploadResponse = {
   data: DocumentUploadData;
 };
 
+export type DocumentSummary = {
+  filename: string;
+  chunk_count: number;
+};
+
+export type DocumentListResponse = {
+  success: true;
+  data: {
+    documents: DocumentSummary[];
+  };
+};
+
+export type DocumentDeleteResponse = {
+  success: true;
+  data: {
+    filename: string;
+    deleted_chunks: number;
+    deleted_files: number;
+  };
+};
+
 export type ChatSource = {
   filename: string;
   page_number: number;

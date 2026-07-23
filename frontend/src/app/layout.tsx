@@ -1,27 +1,24 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Outfit, Syne } from "next/font/google";
 
-import { Navbar } from "@/components/layout/navbar";
+import { ThemeProvider } from "@/components/theme/theme-provider";
 
 import "@/styles/globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const outfit = Outfit({
+  variable: "--font-outfit",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const syne = Syne({
+  variable: "--font-syne",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: {
-    default: "Mesh RAG",
-    template: "%s · Mesh RAG",
-  },
+  title: "Mesh RAG",
   description:
-    "A document intelligence system that enables grounded AI conversations over your data.",
+    "Upload PDFs and ask grounded questions against a selected document.",
 };
 
 export default function RootLayout({
@@ -30,12 +27,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-screen antialiased`}
+        className={`${outfit.variable} ${syne.variable} min-h-screen font-sans antialiased`}
       >
-        <Navbar />
-        {children}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("mesh-theme");var d=t==="dark"||(t!=="light"&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(d)document.documentElement.classList.add("dark");}catch(e){}})();`,
+          }}
+        />
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );
