@@ -7,7 +7,12 @@ from fastapi import UploadFile, status
 from app.core.config import Settings
 from app.core.exceptions import AppError
 from app.core.logging import get_logger
-from app.schemas.document import DocumentUploadData
+from app.schemas.document import (
+    DocumentDeleteData,
+    DocumentListData,
+    DocumentSummary,
+    DocumentUploadData,
+)
 from app.services.document_processor import DocumentProcessor
 from app.services.vector_store import VectorStore
 
@@ -25,6 +30,62 @@ class DocumentService:
         self._upload_dir = Path(settings.upload_dir)
         self._processor = DocumentProcessor(settings)
         self._vector_store = VectorStore(settings)
+
+    async def list_documents(self) -> DocumentListData:
+        items = await self._vector_store.list_documents()
+        return DocumentListData(
+            documents=[
+                DocumentSummary(filename=name, chunk_count=count)
+                for name, count in items
+            ]
+        )
+
+    async def delete_document(self, filename: str) -> DocumentDeleteData:
+        safe_name = self._validate_filename(filename)
+        deleted_chunks = await self._vector_store.delete_by_filename(safe_name)
+        if deleted_chunks == 0:
+            raise AppError(
+                "Document not found",
+                code="document_not_found",
+                status_code=status.HTTP_404_NOT_FOUND,
+                details=[{"filename": safe_name}],
+            )
+
+        deleted_files = await self._delete_stored_files(safe_name)
+        logger.info(
+            "document_deleted filename=%s chunks=%s files=%s",
+            safe_name,
+            deleted_chunks,
+            deleted_files,
+        )
+        return DocumentDeleteData(
+            filename=safe_name,
+            deleted_chunks=deleted_chunks,
+            deleted_files=deleted_files,
+        )
+
+    async def _delete_stored_files(self, filename: str) -> int:
+        if not self._upload_dir.exists():
+            return 0
+
+        matches = [
+            path
+            for path in self._upload_dir.iterdir()
+            if path.is_file() and path.name.endswith(f"_{filename}")
+        ]
+
+        deleted = 0
+        for path in matches:
+            try:
+                await asyncio.to_thread(path.unlink)
+                deleted += 1
+            except OSError as exc:
+                logger.warning(
+                    "document_file_delete_failed path=%s reason=%s",
+                    path,
+                    exc,
+                )
+        return deleted
 
     async def upload_pdf(self, file: UploadFile) -> DocumentUploadData:
         filename = self._validate_filename(file.filename)

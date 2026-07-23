@@ -27,11 +27,15 @@ class ChatService:
         self._settings = settings
         self._vector_store = VectorStore(settings)
 
-    async def ask(self, question: str) -> ChatResponse:
+    async def ask(
+        self, question: str, *, filename: str | None = None
+    ) -> ChatResponse:
         normalized_question = question.strip()
+        scoped_filename = (filename or "").strip() or None
         results = await self._vector_store.search_documents(
             normalized_question,
             top_k=self._settings.retrieval_top_k,
+            filename=scoped_filename,
         )
         relevant = [
             result
@@ -42,8 +46,9 @@ class ChatService:
         sources = self._build_sources(relevant)
         if not relevant:
             logger.info(
-                "chat_no_relevant_context question_length=%s",
+                "chat_no_relevant_context question_length=%s filename=%s",
                 len(normalized_question),
+                scoped_filename or "*",
             )
             return ChatResponse(answer=NO_CONTEXT_ANSWER, sources=sources)
 

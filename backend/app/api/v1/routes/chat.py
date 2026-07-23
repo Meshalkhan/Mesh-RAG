@@ -20,4 +20,4 @@ async def chat(
 ) -> ChatResponse:
     """Retrieve relevant chunks and generate a grounded answer with sources."""
     service = ChatService(settings)
-    return await service.ask(payload.question)
+    return await service.ask(payload.question, filename=payload.filename)

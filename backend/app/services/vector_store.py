@@ -64,8 +64,40 @@ class VectorStore:
         )
         return ids
 
+    async def list_documents(self) -> list[tuple[str, int]]:
+        try:
+            raw = await asyncio.to_thread(
+                self._collection.get,
+                include=["metadatas"],
+            )
+        except Exception as exc:
+            logger.exception(
+                "vector_list_failed collection=%s", self._collection_name
+            )
+            raise AppError(
+                "Failed to list indexed documents",
+                code="vector_list_error",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                details=[{"reason": str(exc)}],
+            ) from exc
+
+        counts: dict[str, int] = {}
+        for metadata in raw.get("metadatas") or []:
+            if not metadata:
+                continue
+            name = str(metadata.get("filename", "")).strip()
+            if not name:
+                continue
+            counts[name] = counts.get(name, 0) + 1
+
+        return sorted(counts.items(), key=lambda item: item[0].lower())
+
     async def search_documents(
-        self, query: str, *, top_k: int = 5
+        self,
+        query: str,
+        *,
+        top_k: int = 5,
+        filename: str | None = None,
     ) -> list[SimilarityResult]:
         normalized_query = query.strip()
         if not normalized_query:
@@ -81,13 +113,29 @@ class VectorStore:
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
-        try:
-            raw = await asyncio.to_thread(
-                self._collection.query,
-                query_texts=[normalized_query],
-                n_results=top_k,
-                include=["documents", "metadatas", "distances"],
+        where: dict[str, str] | None = None
+        scoped_name = (filename or "").strip()
+        if scoped_name:
+            where = {"filename": scoped_name}
+            matching = await asyncio.to_thread(
+                self._collection.get,
+                where=where,
+                include=[],
             )
+            match_count = len(matching.get("ids") or [])
+            if match_count == 0:
+                return []
+            top_k = min(top_k, match_count)
+
+        try:
+            query_kwargs: dict[str, object] = {
+                "query_texts": [normalized_query],
+                "n_results": top_k,
+                "include": ["documents", "metadatas", "distances"],
+            }
+            if where is not None:
+                query_kwargs["where"] = where
+            raw = await asyncio.to_thread(self._collection.query, **query_kwargs)
         except Exception as exc:
             logger.exception(
                 "vector_search_failed collection=%s", self._collection_name
@@ -121,9 +169,51 @@ class VectorStore:
             )
 
         logger.info(
-            "documents_searched collection=%s query_length=%s results=%s",
+            "documents_searched collection=%s query_length=%s filename=%s results=%s",
             self._collection_name,
             len(normalized_query),
+            scoped_name or "*",
             len(results),
         )
         return results
+
+    async def delete_by_filename(self, filename: str) -> int:
+        scoped_name = filename.strip()
+        if not scoped_name:
+            raise AppError(
+                "Filename is required",
+                code="invalid_filename",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        where = {"filename": scoped_name}
+        try:
+            matching = await asyncio.to_thread(
+                self._collection.get,
+                where=where,
+                include=[],
+            )
+            ids = matching.get("ids") or []
+            if not ids:
+                return 0
+            await asyncio.to_thread(self._collection.delete, ids=ids)
+        except Exception as exc:
+            logger.exception(
+                "vector_delete_failed collection=%s filename=%s",
+                self._collection_name,
+                scoped_name,
+            )
+            raise AppError(
+                "Failed to delete document embeddings",
+                code="vector_delete_error",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                details=[{"reason": str(exc)}],
+            ) from exc
+
+        logger.info(
+            "documents_deleted collection=%s filename=%s count=%s",
+            self._collection_name,
+            scoped_name,
+            len(ids),
+        )
+        return len(ids)

@@ -1,48 +1,56 @@
 # Mesh RAG
 
-Document question answering over uploaded PDFs. Users upload a document, the system indexes it, and chat answers are grounded in retrieved chunks with source citations.
+Document Q&A over uploaded PDFs. One workspace: upload → select a file → ask grounded questions against that file only. Answers include source citations.
 
-**Stack:** Next.js 15 (TypeScript, Tailwind) · FastAPI (Python 3.12) · ChromaDB · Groq / OpenAI
+**Stack:** Next.js 15 (TypeScript, Tailwind, Motion) · FastAPI (Python 3.12) · ChromaDB · Groq / OpenAI
 
----
-
-## Project overview
-
-Mesh RAG demonstrates an end-to-end RAG loop for a full-stack AI take-home:
-
-1. Upload a PDF
-2. Extract text, chunk it, embed and store vectors
-3. Ask a question
-4. Retrieve relevant chunks and generate a grounded answer with sources
-
-If retrieval finds nothing relevant, the API returns exactly:
-
-`I couldn't find relevant information.`
-
-and does not call the LLM.
+If retrieval finds nothing relevant, the API returns exactly `I couldn't find relevant information.` and does not call the LLM.
 
 ---
 
-## Architecture explanation
+## Architecture
 
 ```text
-Browser (Next.js)
-    │  HTTP
-    ▼
+Browser (Next.js · single-page workspace)
+        │  HTTP
+        ▼
 FastAPI (/api/v1)
-    ├── POST /documents/upload  → validate → disk → chunk → ChromaDB
-    ├── POST /chat              → retrieve → filter → LLM (Groq/OpenAI) → answer + sources
-    └── GET  /health
+        ├── DocumentService → disk + DocumentProcessor → VectorStore (ChromaDB)
+        └── ChatService → VectorStore (retrieve by filename) → LLM (Groq / OpenAI)
 ```
 
-| Layer | Responsibility |
-|-------|----------------|
-| Frontend | Upload UI, chat UI, API client |
-| Backend services | Validation, PDF processing, vector store, RAG orchestration |
-| ChromaDB | Embeddings + similarity search (persistent local store) |
-| LLM | Answer generation via Groq (`llama-3.3-70b-versatile` default) or OpenAI |
+| Piece | Tech | Role |
+|-------|------|------|
+| UI | Next.js 15, TypeScript, Tailwind, Motion | `/` workspace: upload, select, chat, theme |
+| API | FastAPI, Pydantic | Validation, orchestration |
+| Processing | pypdf | Page text + character chunks |
+| Vectors | ChromaDB (persistent) | Embed + cosine search |
+| LLM | Groq (default) or OpenAI | Grounded generation |
 
-Details: [docs/architecture.md](docs/architecture.md), [docs/data-flow.md](docs/data-flow.md)
+Routes stay thin; logic lives in services (`DocumentService`, `DocumentProcessor`, `VectorStore`, `ChatService`, `LLMProvider`).
+
+### API
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/v1/health` | Liveness |
+| `GET` | `/api/v1/documents` | List indexed filenames + chunk counts |
+| `POST` | `/api/v1/documents/upload` | Validate PDF → chunk → index |
+| `DELETE` | `/api/v1/documents/{filename}` | Remove chunks (+ matching upload files) |
+| `POST` | `/api/v1/chat` | `{ question, filename }` → answer + sources |
+
+### RAG
+
+**Index:** extract page text → chunk (`CHUNK_SIZE` / `CHUNK_OVERLAP`) with `{filename, page_number}` → Chroma (default embeddings).
+
+**Query:** embed question via Chroma → top-k **within the selected filename** → keep `distance <= RETRIEVAL_MAX_DISTANCE` → if empty, refuse without calling the LLM → else prompt with context → return answer + deduped sources.
+
+**Chunk count** (UI): number of indexed text segments for that PDF.
+
+### Persistence
+
+- PDFs: `UPLOAD_DIR` (default `storage/uploads`)
+- Vectors: `CHROMA_PERSIST_DIR` (default `storage/chroma`)
 
 ---
 
@@ -85,9 +93,10 @@ App: http://localhost:3000
 
 ### Smoke check
 
-1. Open **Upload** → submit a text PDF  
-2. Open **Chat** → ask something covered by the document  
-3. Confirm answer + source filename/page  
+1. Open http://localhost:3000 → **Upload PDF**
+2. Select the document in the list
+3. Ask a question covered by that file → confirm answer + sources
+4. Optional: delete the document via the trash control
 
 ---
 
@@ -122,26 +131,3 @@ Frontend:
 | `NEXT_PUBLIC_API_URL` | Backend API base | `http://localhost:8001/api/v1` |
 
 Templates: [`.env.example`](.env.example), [`frontend/.env.example`](frontend/.env.example), [`frontend/.env.production.example`](frontend/.env.production.example)
-
----
-
-## How RAG works
-
-```text
-Upload PDF → extract text → chunk (+ page metadata)
-          → embed + store in ChromaDB
-
-Question  → embed query → top-k similarity search
-          → drop weak matches (distance filter)
-          → if none: refuse without LLM
-          → else: prompt LLM (Groq/OpenAI) with context → answer + sources
-```
-
-| Stage | Implementation |
-|-------|----------------|
-| Extract | pypdf per page |
-| Chunk | Character windows (`CHUNK_SIZE` / `CHUNK_OVERLAP`) |
-| Embed/store | ChromaDB default embedding function, cosine space |
-| Retrieve | Top-k + `RETRIEVAL_MAX_DISTANCE` |
-| Generate | OpenAI-compatible chat API (Groq or OpenAI), temperature `0` |
-| Cite | Deduped `{ filename, page_number }` |
