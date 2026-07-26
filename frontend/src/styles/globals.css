@@ -88,6 +88,12 @@
     font-feature-settings: "kern", "liga", "calt";
   }
 
+  select,
+  select option {
+    color: var(--foreground);
+    background-color: var(--card);
+  }
+
   ::selection {
     background: color-mix(in oklch, var(--accent) 30%, transparent);
   }

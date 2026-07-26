@@ -436,10 +436,14 @@ export function Workspace() {
                 onChange={(event) =>
                   setSelectedProvider(event.target.value as LlmProviderName)
                 }
-                className="cursor-pointer border-b border-border bg-transparent pb-1.5 text-sm text-foreground transition-colors duration-300 outline-none hover:border-accent focus:border-accent"
+                className="min-w-36 cursor-pointer rounded-sm border border-border bg-surface px-3 py-2 text-sm text-foreground transition-colors duration-300 outline-none hover:border-accent focus:border-accent"
               >
                 {providerOptions.map((item) => (
-                  <option key={item.name} value={item.name}>
+                  <option
+                    key={item.name}
+                    value={item.name}
+                    className="bg-card text-foreground"
+                  >
                     {PROVIDER_LABELS[item.name]}
                     {item.configured ? "" : " — not configured"}
                   </option>
