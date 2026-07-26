@@ -1,9 +1,9 @@
 "use client";
 
-import { FileText, LoaderCircle, Send, Trash2, Upload } from "lucide-react";
+import { LoaderCircle, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { FormEvent, MouseEvent } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -11,17 +11,38 @@ import {
   ApiError,
   askQuestion,
   deleteDocument,
+  getHealth,
   listDocuments,
   uploadDocument,
 } from "@/lib/api";
-import type { ChatResponse, DocumentSummary } from "@/types/api";
+import type {
+  ChatResponse,
+  DocumentSummary,
+  HealthResponse,
+  LlmProviderName,
+} from "@/types/api";
 
 type ChatTurn = {
   id: string;
   question: string;
   answer: string;
   sources: ChatResponse["sources"];
+  provider: LlmProviderName;
 };
+
+const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
+
+const PROVIDER_LABELS: Record<LlmProviderName, string> = {
+  groq: "Groq",
+  openai: "OpenAI",
+};
+
+const LABEL_CLASS =
+  "text-[0.62rem] font-medium uppercase tracking-[0.32em] text-muted-foreground";
+
+function providerKeyHint(provider: LlmProviderName): string {
+  return provider === "openai" ? "OPENAI_API_KEY" : "GROQ_API_KEY";
+}
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -41,6 +62,31 @@ export function Workspace() {
   const [asking, setAsking] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
   const [turns, setTurns] = useState<ChatTurn[]>([]);
+  const [llmStatus, setLlmStatus] = useState<HealthResponse | null>(null);
+  const [llmStatusError, setLlmStatusError] = useState<string | null>(null);
+  const [selectedProvider, setSelectedProvider] =
+    useState<LlmProviderName>("groq");
+
+  const providerConfigured = useMemo(() => {
+    if (!llmStatus) return false;
+    return (
+      llmStatus.llm_providers.find((item) => item.name === selectedProvider)
+        ?.configured ?? false
+    );
+  }, [llmStatus, selectedProvider]);
+
+  const providerBlockMessage = useMemo(() => {
+    if (llmStatusError) {
+      return llmStatusError;
+    }
+    if (!llmStatus) {
+      return "Checking available models…";
+    }
+    if (!providerConfigured) {
+      return `${PROVIDER_LABELS[selectedProvider]} is not configured. Set ${providerKeyHint(selectedProvider)} on the server, then restart the API.`;
+    }
+    return null;
+  }, [llmStatus, llmStatusError, providerConfigured, selectedProvider]);
 
   const refreshDocuments = useCallback(async (preferFilename?: string) => {
     try {
@@ -49,7 +95,10 @@ export function Workspace() {
       setDocuments(next);
       setListError(null);
       setSelectedFilename((current) => {
-        if (preferFilename && next.some((doc) => doc.filename === preferFilename)) {
+        if (
+          preferFilename &&
+          next.some((doc) => doc.filename === preferFilename)
+        ) {
           return preferFilename;
         }
         if (current && next.some((doc) => doc.filename === current)) {
@@ -64,9 +113,43 @@ export function Workspace() {
     }
   }, []);
 
+  const refreshLlmStatus = useCallback(async () => {
+    try {
+      const health = await getHealth();
+      setLlmStatus(health);
+      setLlmStatusError(null);
+      setSelectedProvider((current) => {
+        const currentConfigured =
+          health.llm_providers.find((item) => item.name === current)
+            ?.configured ?? false;
+        if (currentConfigured) {
+          return current;
+        }
+        const defaultConfigured =
+          health.llm_providers.find(
+            (item) => item.name === health.default_llm_provider,
+          )?.configured ?? false;
+        if (defaultConfigured) {
+          return health.default_llm_provider;
+        }
+        const firstConfigured = health.llm_providers.find(
+          (item) => item.configured,
+        );
+        return firstConfigured?.name ?? health.default_llm_provider;
+      });
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : "Could not load model availability.";
+      setLlmStatusError(message);
+    }
+  }, []);
+
   useEffect(() => {
     void refreshDocuments();
-  }, [refreshDocuments]);
+    void refreshLlmStatus();
+  }, [refreshDocuments, refreshLlmStatus]);
 
   useEffect(() => {
     setTurns([]);
@@ -88,7 +171,7 @@ export function Workspace() {
     try {
       const response = await uploadDocument(file);
       setUploadMessage(
-        `Indexed ${response.data.filename} · ${response.data.indexed_count} chunks · ${formatSize(response.data.size)}`,
+        `Indexed ${response.data.filename} — ${response.data.indexed_count} chunks, ${formatSize(response.data.size)}`,
       );
       await refreshDocuments(response.data.filename);
     } catch (error) {
@@ -120,7 +203,7 @@ export function Workspace() {
     try {
       const response = await deleteDocument(filename);
       setUploadMessage(
-        `Deleted ${response.data.filename} · ${response.data.deleted_chunks} chunks`,
+        `Deleted ${response.data.filename} — ${response.data.deleted_chunks} chunks`,
       );
       await refreshDocuments();
     } catch (error) {
@@ -135,12 +218,16 @@ export function Workspace() {
   async function handleAsk(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = question.trim();
-    if (!trimmed || !selectedFilename || asking) return;
+    if (!trimmed || !selectedFilename || asking || !providerConfigured) return;
 
     setAsking(true);
     setChatError(null);
     try {
-      const response = await askQuestion(trimmed, selectedFilename);
+      const response = await askQuestion(
+        trimmed,
+        selectedFilename,
+        selectedProvider,
+      );
       setTurns((current) => [
         ...current,
         {
@@ -148,6 +235,7 @@ export function Workspace() {
           question: trimmed,
           answer: response.answer,
           sources: response.sources,
+          provider: selectedProvider,
         },
       ]);
       setQuestion("");
@@ -160,39 +248,55 @@ export function Workspace() {
     }
   }
 
+  const canAsk =
+    Boolean(selectedFilename) &&
+    !asking &&
+    Boolean(question.trim()) &&
+    providerConfigured;
+
+  const providerOptions = llmStatus?.llm_providers ?? [
+    { name: "groq" as const, configured: false },
+    { name: "openai" as const, configured: false },
+  ];
+
   return (
-    <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pb-8 pt-5 sm:px-6 lg:px-8">
+    <div className="min-h-screen">
       <motion.header
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-        className="mb-6 flex items-center justify-between gap-4"
+        transition={{ duration: 0.8, ease: EASE }}
+        className="border-b border-border"
       >
-        <div>
-          <p className="font-display text-xs tracking-[0.28em] text-accent uppercase">
-            Mesh AI
-          </p>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-            Mesh RAG
-          </h1>
-          <p className="mt-1 max-w-md text-sm text-muted-foreground">
-            Upload a PDF, select it, ask only against that document.
-          </p>
+        <div className="mx-auto flex max-w-[1440px] items-end justify-between gap-8 px-6 py-8 lg:px-12">
+          <div>
+            <p className="text-[0.62rem] font-medium uppercase tracking-[0.42em] text-accent">
+              Mesh AI
+            </p>
+            <h1 className="font-display mt-3 text-4xl leading-[0.95] tracking-[-0.015em] sm:text-5xl">
+              Mesh RAG
+            </h1>
+          </div>
+          <div className="flex items-center gap-8">
+            <p className="hidden max-w-60 text-right text-xs leading-relaxed text-muted-foreground md:block">
+              Grounded answers from a single document, each one returned with
+              its citations.
+            </p>
+            <ThemeToggle />
+          </div>
         </div>
-        <ThemeToggle />
       </motion.header>
 
-      <div className="grid flex-1 gap-5 lg:grid-cols-[minmax(260px,320px)_1fr]">
+      <main className="mx-auto grid max-w-[1440px] gap-5 px-6 py-6 lg:grid-cols-[minmax(260px,330px)_1fr] lg:gap-6 lg:px-12 lg:py-8">
         <motion.aside
-          initial={{ opacity: 0, x: -18 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
-          className="flex flex-col rounded-3xl border border-border bg-card/75 p-4 shadow-[0_20px_60px_-40px_var(--glow)] backdrop-blur-xl"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.08, ease: EASE }}
+          className="flex flex-col rounded-lg border border-border bg-card p-5 sm:p-6"
         >
-          <div className="mb-4 flex items-center justify-between gap-2">
-            <h2 className="font-display text-lg font-medium">Documents</h2>
-            <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs text-secondary-foreground">
-              {documents.length}
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 className={LABEL_CLASS}>Library</h2>
+            <span className="font-display text-lg leading-none text-muted-foreground">
+              {documents.length.toString().padStart(2, "0")}
             </span>
           </div>
 
@@ -206,29 +310,37 @@ export function Workspace() {
 
           <Button
             variant="primary"
-            className="mb-3 w-full"
+            className="mt-6 w-full"
             disabled={uploading}
             onClick={() => fileInputRef.current?.click()}
           >
             {uploading ? (
-              <LoaderCircle className="size-4 animate-spin" />
-            ) : (
-              <Upload className="size-4" />
-            )}
-            {uploading ? "Indexing…" : "Upload PDF"}
+              <LoaderCircle className="size-3.5 animate-spin" />
+            ) : null}
+            {uploading ? "Indexing" : "Upload PDF"}
           </Button>
 
-          {uploadMessage ? (
-            <p className="mb-3 rounded-2xl bg-muted/80 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-              {uploadMessage}
+          <AnimatePresence initial={false}>
+            {uploadMessage ? (
+              <motion.p
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.4, ease: EASE }}
+                className="mt-4 border-l border-accent pl-3 text-xs leading-relaxed text-muted-foreground"
+              >
+                {uploadMessage}
+              </motion.p>
+            ) : null}
+          </AnimatePresence>
+
+          {listError ? (
+            <p className="mt-4 text-xs leading-relaxed text-destructive">
+              {listError}
             </p>
           ) : null}
 
-          {listError ? (
-            <p className="mb-3 text-sm text-destructive">{listError}</p>
-          ) : null}
-
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+          <div className="mt-8 min-h-0 flex-1 overflow-y-auto">
             <AnimatePresence initial={false}>
               {documents.map((doc, index) => {
                 const selected = doc.filename === selectedFilename;
@@ -237,35 +349,43 @@ export function Workspace() {
                   <motion.div
                     key={doc.filename}
                     layout
-                    initial={{ opacity: 0, y: 8 }}
+                    initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.96 }}
-                    transition={{ delay: index * 0.03 }}
-                    className={`flex w-full items-start gap-2 rounded-2xl border px-2 py-2 transition-colors ${
-                      selected
-                        ? "border-primary/50 bg-primary/10 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_25%,transparent)]"
-                        : "border-transparent bg-muted/50 hover:border-border hover:bg-muted"
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.04, ease: EASE }}
+                    className={`group relative flex items-start gap-3 border-b border-border/70 last:border-b-0 ${
+                      selected ? "bg-surface" : ""
                     }`}
                   >
+                    <span
+                      aria-hidden
+                      className={`absolute top-0 bottom-0 left-0 w-px transition-colors duration-300 ${
+                        selected ? "bg-accent" : "bg-transparent"
+                      }`}
+                    />
                     <button
                       type="button"
                       onClick={() => setSelectedFilename(doc.filename)}
-                      className="flex min-w-0 flex-1 items-start gap-3 rounded-xl px-1 py-1 text-left"
+                      className="flex min-w-0 flex-1 items-baseline gap-4 py-4 pl-3 text-left"
                     >
                       <span
-                        className={`mt-0.5 rounded-xl p-2 ${
-                          selected
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-card text-accent"
+                        className={`font-display text-sm transition-colors duration-300 ${
+                          selected ? "text-accent" : "text-muted-foreground"
                         }`}
                       >
-                        <FileText className="size-4" />
+                        {(index + 1).toString().padStart(2, "0")}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">
+                        <span
+                          className={`block truncate text-sm transition-colors duration-300 ${
+                            selected
+                              ? "text-foreground"
+                              : "text-muted-foreground group-hover:text-foreground"
+                          }`}
+                        >
                           {doc.filename}
                         </span>
-                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                        <span className="mt-1 block text-[0.68rem] tracking-[0.08em] text-muted-foreground">
                           {doc.chunk_count} chunks
                         </span>
                       </span>
@@ -275,12 +395,12 @@ export function Workspace() {
                       aria-label={`Delete ${doc.filename}`}
                       disabled={deleting || deletingFilename !== null}
                       onClick={(event) => void handleDelete(event, doc.filename)}
-                      className="mt-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
+                      className="mt-4 inline-flex size-7 shrink-0 items-center justify-center text-muted-foreground/50 transition-colors duration-300 hover:text-destructive focus-visible:text-destructive disabled:pointer-events-none disabled:opacity-40"
                     >
                       {deleting ? (
-                        <LoaderCircle className="size-4 animate-spin" />
+                        <LoaderCircle className="size-3.5 animate-spin" />
                       ) : (
-                        <Trash2 className="size-4" />
+                        <Trash2 className="size-3.5" />
                       )}
                     </button>
                   </motion.div>
@@ -289,64 +409,89 @@ export function Workspace() {
             </AnimatePresence>
 
             {documents.length === 0 && !listError ? (
-              <p className="rounded-2xl border border-dashed border-border px-3 py-8 text-center text-sm text-muted-foreground">
+              <div className="rounded-md border border-dashed border-border bg-surface/60 px-4 py-10 text-center text-sm leading-relaxed text-muted-foreground">
                 No documents yet. Upload a PDF to begin.
-              </p>
+              </div>
             ) : null}
           </div>
         </motion.aside>
 
         <motion.section
-          initial={{ opacity: 0, x: 18 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-          className="flex min-h-[70vh] flex-col rounded-3xl border border-border bg-card/75 shadow-[0_20px_60px_-40px_var(--glow)] backdrop-blur-xl"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.16, ease: EASE }}
+          className="flex min-h-[72vh] flex-col rounded-lg border border-border bg-card"
         >
-          <div className="border-b border-border px-5 py-4">
-            <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">
-              Selected corpus
-            </p>
-            <h2 className="font-display mt-1 truncate text-xl font-medium">
-              {selectedFilename ?? "Select a document"}
-            </h2>
+          <div className="flex flex-wrap items-end justify-between gap-6 border-b border-border px-5 py-5 sm:px-6">
+            <div className="min-w-0">
+              <p className={LABEL_CLASS}>Selected document</p>
+              <h2 className="font-display mt-3 truncate text-2xl leading-tight sm:text-3xl">
+                {selectedFilename ?? "No document selected"}
+              </h2>
+            </div>
+            <label className="flex flex-col gap-2">
+              <span className={LABEL_CLASS}>Model</span>
+              <select
+                value={selectedProvider}
+                onChange={(event) =>
+                  setSelectedProvider(event.target.value as LlmProviderName)
+                }
+                className="cursor-pointer border-b border-border bg-transparent pb-1.5 text-sm text-foreground transition-colors duration-300 outline-none hover:border-accent focus:border-accent"
+              >
+                {providerOptions.map((item) => (
+                  <option key={item.name} value={item.name}>
+                    {PROVIDER_LABELS[item.name]}
+                    {item.configured ? "" : " — not configured"}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
 
-          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-6">
             {!selectedFilename ? (
-              <div className="flex h-full min-h-48 items-center justify-center text-sm text-muted-foreground">
-                Choose a file on the left to ask grounded questions.
-              </div>
+              <p className="max-w-md text-sm leading-[1.9] text-muted-foreground">
+                Choose a document from the library to ask questions scoped to
+                that file.
+              </p>
+            ) : null}
+
+            {selectedFilename && turns.length === 0 ? (
+              <p className="max-w-md text-sm leading-[1.9] text-muted-foreground">
+                Ask anything covered by this document. Answers cite the pages
+                they came from.
+              </p>
             ) : null}
 
             <AnimatePresence initial={false}>
               {turns.map((turn) => (
                 <motion.article
                   key={turn.id}
-                  initial={{ opacity: 0, y: 14 }}
+                  initial={{ opacity: 0, y: 18 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="space-y-3"
+                  transition={{ duration: 0.7, ease: EASE }}
+                  className="border-b border-border/50 py-8 first:pt-0 last:border-b-0"
                 >
-                  <div className="ml-auto max-w-[90%] rounded-3xl rounded-br-md bg-primary px-4 py-3 text-sm text-primary-foreground shadow-[0_12px_30px_-18px_var(--glow)]">
+                  <p className="font-display max-w-2xl text-xl leading-snug italic sm:text-2xl">
                     {turn.question}
-                  </div>
-                  <div className="max-w-[95%] rounded-3xl rounded-bl-md border border-border bg-surface px-4 py-3 text-sm leading-relaxed">
-                    <p className="whitespace-pre-wrap">{turn.answer}</p>
-                    {turn.sources.length > 0 ? (
-                      <ul className="mt-3 flex flex-wrap gap-2">
-                        {turn.sources.map((source) => (
-                          <li
-                            key={`${turn.id}-${source.filename}-${source.page_number}`}
-                            className="rounded-full bg-secondary px-2.5 py-1 text-xs text-secondary-foreground"
-                          >
-                            {source.filename} · p.{source.page_number}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="mt-3 text-xs text-muted-foreground">
-                        No sources for this answer.
-                      </p>
-                    )}
+                  </p>
+                  <p className="mt-5 max-w-2xl text-[0.95rem] leading-[1.85] whitespace-pre-wrap text-foreground/85">
+                    {turn.answer}
+                  </p>
+                  <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.62rem] uppercase tracking-[0.22em] text-muted-foreground">
+                    <span className="text-accent">
+                      {turn.sources.length > 0 ? "Sources" : "No sources"}
+                    </span>
+                    {turn.sources.map((source) => (
+                      <span
+                        key={`${turn.id}-${source.filename}-${source.page_number}`}
+                      >
+                        {source.filename} · p.{source.page_number}
+                      </span>
+                    ))}
+                    <span className="ml-auto">
+                      {PROVIDER_LABELS[turn.provider]}
+                    </span>
                   </div>
                 </motion.article>
               ))}
@@ -355,41 +500,49 @@ export function Workspace() {
 
           <form
             onSubmit={(event) => void handleAsk(event)}
-            className="border-t border-border p-4"
+            className="border-t border-border bg-surface/40 px-5 py-5 sm:px-6"
           >
-            {chatError ? (
-              <p className="mb-2 text-sm text-destructive">{chatError}</p>
+            {providerBlockMessage ? (
+              <p
+                className={`mb-4 text-xs leading-relaxed ${
+                  providerConfigured
+                    ? "text-muted-foreground"
+                    : "text-destructive"
+                }`}
+              >
+                {providerBlockMessage}
+              </p>
             ) : null}
-            <div className="flex items-end gap-2 rounded-3xl border border-border bg-muted/40 p-2 focus-within:border-primary/45">
+            {chatError ? (
+              <p className="mb-4 text-xs leading-relaxed text-destructive">
+                {chatError}
+              </p>
+            ) : null}
+            <div className="flex items-end gap-6 border-b border-border pb-4 transition-colors duration-300 focus-within:border-accent">
               <textarea
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
                 rows={2}
                 placeholder={
-                  selectedFilename
-                    ? `Ask about ${selectedFilename}…`
-                    : "Select a document first"
+                  !selectedFilename
+                    ? "Select a document first"
+                    : !providerConfigured
+                      ? `${PROVIDER_LABELS[selectedProvider]} key missing on server`
+                      : "Ask a question…"
                 }
-                disabled={!selectedFilename || asking}
-                className="max-h-36 min-h-12 flex-1 resize-none bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+                disabled={!selectedFilename || asking || !providerConfigured}
+                className="max-h-40 min-h-14 flex-1 resize-none bg-transparent text-[0.95rem] leading-[1.7] outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
               />
-              <Button
-                type="submit"
-                size="default"
-                disabled={!selectedFilename || asking || !question.trim()}
-                className="shrink-0"
-              >
+              <Button type="submit" disabled={!canAsk} className="shrink-0">
                 {asking ? (
-                  <LoaderCircle className="size-4 animate-spin" />
-                ) : (
-                  <Send className="size-4" />
-                )}
-                Ask
+                  <LoaderCircle className="size-3.5 animate-spin" />
+                ) : null}
+                {asking ? "Asking" : "Ask"}
               </Button>
             </div>
           </form>
         </motion.section>
-      </div>
+      </main>
     </div>
   );
 }

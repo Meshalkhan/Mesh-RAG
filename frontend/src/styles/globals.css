@@ -5,92 +5,109 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-outfit), "Segoe UI", "Hiragino Sans", "Noto Sans CJK JP", sans-serif;
-  --font-display: var(--font-syne), "Segoe UI", "Hiragino Sans", "Noto Sans CJK JP", sans-serif;
-  --font-mono: ui-monospace, monospace;
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
   --color-surface: var(--surface);
-  --color-glow: var(--glow);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --font-sans: var(--font-inter), "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-display:
+    var(--font-instrument-serif), "Iowan Old Style", Georgia, serif;
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) * 2);
+  --radius-xl: calc(var(--radius) * 3);
 }
 
 :root {
-  /* Cool washi paper + vermillion + ink — lively, not pastel-generic */
-  --background: oklch(0.97 0.012 230);
-  --foreground: oklch(0.22 0.03 260);
-  --card: oklch(0.99 0.008 230 / 0.86);
-  --card-foreground: oklch(0.22 0.03 260);
-  --primary: oklch(0.55 0.19 25);
-  --primary-foreground: oklch(0.99 0.01 30);
-  --secondary: oklch(0.93 0.03 200);
-  --secondary-foreground: oklch(0.28 0.05 220);
-  --muted: oklch(0.94 0.015 230);
-  --muted-foreground: oklch(0.48 0.03 250);
-  --accent: oklch(0.72 0.12 175);
-  --accent-foreground: oklch(0.2 0.04 200);
-  --destructive: oklch(0.55 0.2 25);
-  --border: oklch(0.86 0.02 240);
-  --input: oklch(0.9 0.02 230);
-  --ring: oklch(0.55 0.19 25);
-  --surface: oklch(0.98 0.01 230 / 0.7);
-  --glow: oklch(0.7 0.14 25 / 0.35);
-  --radius: 1rem;
+  color-scheme: light;
+  --background: oklch(0.955 0.007 85);
+  --foreground: oklch(0.17 0.004 75);
+  --card: oklch(0.995 0.003 85);
+  --card-foreground: oklch(0.17 0.004 75);
+  --surface: oklch(0.975 0.005 85);
+  --primary: oklch(0.19 0.004 75);
+  --primary-foreground: oklch(0.98 0.006 85);
+  --secondary: oklch(0.93 0.008 85);
+  --secondary-foreground: oklch(0.3 0.006 75);
+  --muted: oklch(0.945 0.007 85);
+  --muted-foreground: oklch(0.52 0.008 75);
+  --accent: oklch(0.62 0.098 78);
+  --accent-foreground: oklch(0.98 0.006 85);
+  --destructive: oklch(0.5 0.15 27);
+  --border: oklch(0.86 0.006 85);
+  --input: oklch(0.88 0.006 85);
+  --ring: oklch(0.62 0.098 78);
+  --radius: 0.5rem;
 }
 
 .dark {
-  --background: oklch(0.17 0.025 265);
-  --foreground: oklch(0.94 0.015 90);
-  --card: oklch(0.22 0.03 265 / 0.88);
-  --card-foreground: oklch(0.94 0.015 90);
-  --primary: oklch(0.72 0.16 25);
-  --primary-foreground: oklch(0.18 0.03 30);
-  --secondary: oklch(0.28 0.04 220);
-  --secondary-foreground: oklch(0.9 0.02 200);
-  --muted: oklch(0.26 0.03 265);
-  --muted-foreground: oklch(0.72 0.02 250);
-  --accent: oklch(0.75 0.11 175);
-  --accent-foreground: oklch(0.16 0.03 200);
-  --destructive: oklch(0.68 0.17 25);
-  --border: oklch(0.35 0.03 265);
-  --input: oklch(0.3 0.03 265);
-  --ring: oklch(0.72 0.16 25);
-  --surface: oklch(0.2 0.03 265 / 0.75);
-  --glow: oklch(0.65 0.14 175 / 0.28);
-  --radius: 1rem;
+  color-scheme: dark;
+  --background: oklch(0.1 0.003 75);
+  --foreground: oklch(0.96 0.004 85);
+  --card: oklch(0.175 0.004 75);
+  --card-foreground: oklch(0.96 0.004 85);
+  --surface: oklch(0.2 0.004 75);
+  --primary: oklch(0.96 0.004 85);
+  --primary-foreground: oklch(0.13 0.003 75);
+  --secondary: oklch(0.22 0.005 75);
+  --secondary-foreground: oklch(0.9 0.004 85);
+  --muted: oklch(0.22 0.004 75);
+  --muted-foreground: oklch(0.68 0.006 80);
+  --accent: oklch(0.79 0.105 82);
+  --accent-foreground: oklch(0.13 0.003 75);
+  --destructive: oklch(0.65 0.16 27);
+  --border: oklch(0.32 0.005 75);
+  --input: oklch(0.3 0.005 75);
+  --ring: oklch(0.79 0.105 82);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
-  }
-
-  body {
-    @apply bg-background text-foreground antialiased;
-    background-image:
-      radial-gradient(ellipse 80% 50% at 10% -10%, var(--glow), transparent 55%),
-      radial-gradient(ellipse 60% 40% at 95% 10%, color-mix(in oklch, var(--accent) 28%, transparent), transparent 50%),
-      linear-gradient(165deg, transparent 40%, color-mix(in oklch, var(--secondary) 35%, transparent));
-    background-attachment: fixed;
-    min-height: 100vh;
+    @apply border-border outline-ring/40;
   }
 
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    min-height: 100vh;
+    font-feature-settings: "kern", "liga", "calt";
+  }
+
+  ::selection {
+    background: color-mix(in oklch, var(--accent) 30%, transparent);
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
 }

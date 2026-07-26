@@ -1,7 +1,7 @@
 "use client";
 
 import { Moon, Sun } from "lucide-react";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 
 import { useTheme } from "@/components/theme/theme-provider";
 import { cn } from "@/lib/utils";
@@ -11,24 +11,26 @@ export function ThemeToggle({ className }: { className?: string }) {
   const isDark = theme === "dark";
 
   return (
-    <motion.button
+    <button
       type="button"
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       onClick={toggleTheme}
-      whileTap={{ scale: 0.92 }}
       className={cn(
-        "inline-flex size-10 items-center justify-center rounded-full border border-border bg-card/80 text-foreground shadow-sm backdrop-blur-md transition-colors hover:border-primary/40 hover:text-primary",
+        "relative inline-flex size-10 items-center justify-center overflow-hidden rounded-sm border border-border text-muted-foreground transition-colors duration-300 hover:border-accent hover:text-accent",
         className,
       )}
     >
-      <motion.span
-        key={theme}
-        initial={{ rotate: -40, opacity: 0, scale: 0.6 }}
-        animate={{ rotate: 0, opacity: 1, scale: 1 }}
-        transition={{ type: "spring", stiffness: 380, damping: 22 }}
-      >
-        {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
-      </motion.span>
-    </motion.button>
+      <AnimatePresence initial={false} mode="wait">
+        <motion.span
+          key={theme}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+        </motion.span>
+      </AnimatePresence>
+    </button>
   );
 }

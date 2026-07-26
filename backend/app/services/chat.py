@@ -28,7 +28,11 @@ class ChatService:
         self._vector_store = VectorStore(settings)
 
     async def ask(
-        self, question: str, *, filename: str | None = None
+        self,
+        question: str,
+        *,
+        filename: str | None = None,
+        provider: str | None = None,
     ) -> ChatResponse:
         normalized_question = question.strip()
         scoped_filename = (filename or "").strip() or None
@@ -52,15 +56,16 @@ class ChatService:
             )
             return ChatResponse(answer=NO_CONTEXT_ANSWER, sources=sources)
 
-        llm = create_llm_provider(self._settings)
+        llm = create_llm_provider(self._settings, provider)
         answer = await llm.generate(
             system_prompt=SYSTEM_PROMPT,
             user_prompt=self._build_user_prompt(normalized_question, relevant),
         )
         logger.info(
-            "chat_answered question_length=%s sources=%s",
+            "chat_answered question_length=%s sources=%s provider=%s",
             len(normalized_question),
             len(sources),
+            (provider or self._settings.llm_provider).lower().strip(),
         )
         return ChatResponse(answer=answer, sources=sources)
 

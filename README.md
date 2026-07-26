@@ -33,17 +33,17 @@ Routes stay thin; logic lives in services (`DocumentService`, `DocumentProcessor
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `GET` | `/api/v1/health` | Liveness |
+| `GET` | `/api/v1/health` | Liveness + which LLM providers have keys configured |
 | `GET` | `/api/v1/documents` | List indexed filenames + chunk counts |
 | `POST` | `/api/v1/documents/upload` | Validate PDF → chunk → index |
 | `DELETE` | `/api/v1/documents/{filename}` | Remove chunks (+ matching upload files) |
-| `POST` | `/api/v1/chat` | `{ question, filename }` → answer + sources |
+| `POST` | `/api/v1/chat` | `{ question, filename, provider? }` → answer + sources |
 
 ### RAG
 
 **Index:** extract page text → chunk (`CHUNK_SIZE` / `CHUNK_OVERLAP`) with `{filename, page_number}` → Chroma (default embeddings).
 
-**Query:** embed question via Chroma → top-k **within the selected filename** → keep `distance <= RETRIEVAL_MAX_DISTANCE` → if empty, refuse without calling the LLM → else prompt with context → return answer + deduped sources.
+**Query:** embed question via Chroma → top-k **within the selected filename** → keep `distance <= RETRIEVAL_MAX_DISTANCE` → if empty, refuse without calling the LLM → else prompt with context using the selected provider (`provider` on chat, else `LLM_PROVIDER`) → return answer + deduped sources.
 
 **Chunk count** (UI): number of indexed text segments for that PDF.
 

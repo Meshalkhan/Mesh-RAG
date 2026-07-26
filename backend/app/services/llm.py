@@ -72,10 +72,12 @@ class OpenAICompatibleProvider:
         return content.strip()
 
 
-def create_llm_provider(settings: Settings) -> LLMProvider:
-    provider = settings.llm_provider.lower().strip()
+def create_llm_provider(
+    settings: Settings, provider: str | None = None
+) -> LLMProvider:
+    selected = (provider or settings.llm_provider).lower().strip()
 
-    if provider == "openai":
+    if selected == "openai":
         return OpenAICompatibleProvider(
             api_key=settings.openai_api_key,
             model=settings.openai_model,
@@ -83,7 +85,7 @@ def create_llm_provider(settings: Settings) -> LLMProvider:
             missing_key_message="OPENAI_API_KEY is not configured",
         )
 
-    if provider == "groq":
+    if selected == "groq":
         return OpenAICompatibleProvider(
             api_key=settings.groq_api_key,
             model=settings.groq_model,
@@ -93,7 +95,7 @@ def create_llm_provider(settings: Settings) -> LLMProvider:
         )
 
     raise AppError(
-        f"Unsupported LLM provider: {settings.llm_provider}",
+        f"Unsupported LLM provider: {provider or settings.llm_provider}",
         code="unsupported_llm_provider",
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        status_code=status.HTTP_400_BAD_REQUEST,
     )

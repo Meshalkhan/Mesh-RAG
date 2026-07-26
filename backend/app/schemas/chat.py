@@ -1,4 +1,8 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+LlmProviderName = Literal["groq", "openai"]
 
 
 class ChatRequest(BaseModel):
@@ -6,6 +10,10 @@ class ChatRequest(BaseModel):
     filename: str | None = Field(
         default=None,
         description="When set, retrieve only chunks from this uploaded filename.",
+    )
+    provider: LlmProviderName | None = Field(
+        default=None,
+        description="Optional LLM provider override. Defaults to server LLM_PROVIDER.",
     )
 
 

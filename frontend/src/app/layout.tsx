@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
-import { Outfit, Syne } from "next/font/google";
+import { Inter, Instrument_Serif } from "next/font/google";
 
 import { ThemeProvider } from "@/components/theme/theme-provider";
 
 import "@/styles/globals.css";
 
-const outfit = Outfit({
-  variable: "--font-outfit",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const syne = Syne({
-  variable: "--font-syne",
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-instrument-serif",
+  weight: "400",
   subsets: ["latin"],
 });
 
@@ -29,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${outfit.variable} ${syne.variable} min-h-screen font-sans antialiased`}
+        className={`${inter.variable} ${instrumentSerif.variable} min-h-screen font-sans antialiased`}
       >
         <script
           dangerouslySetInnerHTML={{

@@ -4,6 +4,8 @@ import type {
   DocumentDeleteResponse,
   DocumentListResponse,
   DocumentUploadResponse,
+  HealthResponse,
+  LlmProviderName,
 } from "@/types/api";
 
 const API_BASE_URL =
@@ -32,6 +34,19 @@ async function parseError(response: Response): Promise<ApiError> {
   } catch {
     return new ApiError("Request failed", "request_failed", response.status);
   }
+}
+
+export async function getHealth(): Promise<HealthResponse> {
+  const response = await fetch(`${API_BASE_URL}/health`, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw await parseError(response);
+  }
+
+  return (await response.json()) as HealthResponse;
 }
 
 export async function listDocuments(): Promise<DocumentListResponse> {
@@ -85,13 +100,14 @@ export async function deleteDocument(
 export async function askQuestion(
   question: string,
   filename: string,
+  provider: LlmProviderName,
 ): Promise<ChatResponse> {
   const response = await fetch(`${API_BASE_URL}/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ question, filename }),
+    body: JSON.stringify({ question, filename, provider }),
   });
 
   if (!response.ok) {

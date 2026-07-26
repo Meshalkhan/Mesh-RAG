@@ -7,6 +7,21 @@ export type ApiErrorBody = {
   };
 };
 
+export type LlmProviderName = "groq" | "openai";
+
+export type LlmProviderAvailability = {
+  name: LlmProviderName;
+  configured: boolean;
+};
+
+export type HealthResponse = {
+  status: "healthy";
+  service: string;
+  version: string;
+  default_llm_provider: LlmProviderName;
+  llm_providers: LlmProviderAvailability[];
+};
+
 export type DocumentUploadData = {
   filename: string;
   size: number;
