@@ -260,24 +260,24 @@ export function Workspace() {
   ];
 
   return (
-    <div className="min-h-screen">
+    <div className="flex h-dvh flex-col overflow-hidden">
       <motion.header
-        initial={{ opacity: 0, y: -12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: EASE }}
-        className="border-b border-border"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, ease: EASE }}
+        className="shrink-0 border-b border-border"
       >
-        <div className="mx-auto flex max-w-[1440px] items-end justify-between gap-8 px-6 py-8 lg:px-12">
-          <div>
-            <p className="text-[0.62rem] font-medium uppercase tracking-[0.42em] text-accent">
+        <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4 px-5 py-3 lg:px-8">
+          <div className="min-w-0">
+            <p className="mb-1 text-[0.55rem] font-medium uppercase tracking-[0.34em] text-accent">
               Mesh AI
             </p>
-            <h1 className="font-display mt-3 text-4xl leading-[0.95] tracking-[-0.015em] sm:text-5xl">
+            <h1 className="font-display text-2xl leading-none tracking-[-0.015em]">
               Mesh RAG
             </h1>
           </div>
-          <div className="flex items-center gap-8">
-            <p className="hidden max-w-60 text-right text-xs leading-relaxed text-muted-foreground md:block">
+          <div className="flex items-center gap-5">
+            <p className="hidden max-w-56 text-right text-[0.68rem] leading-relaxed text-muted-foreground sm:block">
               Grounded answers from a single document, each one returned with
               its citations.
             </p>
@@ -286,16 +286,16 @@ export function Workspace() {
         </div>
       </motion.header>
 
-      <main className="mx-auto grid max-w-[1440px] gap-5 px-6 py-6 lg:grid-cols-[minmax(260px,330px)_1fr] lg:gap-6 lg:px-12 lg:py-8">
+      <main className="mx-auto grid min-h-0 w-full max-w-[1440px] flex-1 gap-4 overflow-hidden p-4 lg:grid-cols-[minmax(240px,300px)_1fr] lg:gap-5 lg:px-8 lg:py-5">
         <motion.aside
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.08, ease: EASE }}
-          className="flex flex-col rounded-lg border border-border bg-card p-5 sm:p-6"
+          transition={{ duration: 0.55, delay: 0.05, ease: EASE }}
+          className="flex min-h-0 flex-col rounded-lg border border-border bg-card p-4"
         >
-          <div className="flex items-baseline justify-between gap-4">
+          <div className="flex shrink-0 items-baseline justify-between gap-4">
             <h2 className={LABEL_CLASS}>Library</h2>
-            <span className="font-display text-lg leading-none text-muted-foreground">
+            <span className="font-display text-base leading-none text-muted-foreground">
               {documents.length.toString().padStart(2, "0")}
             </span>
           </div>
@@ -310,7 +310,8 @@ export function Workspace() {
 
           <Button
             variant="primary"
-            className="mt-6 w-full"
+            size="sm"
+            className="mt-3 w-full"
             disabled={uploading}
             onClick={() => fileInputRef.current?.click()}
           >
@@ -326,8 +327,8 @@ export function Workspace() {
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.4, ease: EASE }}
-                className="mt-4 border-l border-accent pl-3 text-xs leading-relaxed text-muted-foreground"
+                transition={{ duration: 0.35, ease: EASE }}
+                className="mt-3 border-l border-accent pl-3 text-xs leading-relaxed text-muted-foreground"
               >
                 {uploadMessage}
               </motion.p>
@@ -335,12 +336,12 @@ export function Workspace() {
           </AnimatePresence>
 
           {listError ? (
-            <p className="mt-4 text-xs leading-relaxed text-destructive">
+            <p className="mt-3 text-xs leading-relaxed text-destructive">
               {listError}
             </p>
           ) : null}
 
-          <div className="mt-8 min-h-0 flex-1 overflow-y-auto">
+          <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
             <AnimatePresence initial={false}>
               {documents.map((doc, index) => {
                 const selected = doc.filename === selectedFilename;
@@ -349,11 +350,11 @@ export function Workspace() {
                   <motion.div
                     key={doc.filename}
                     layout
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.5, delay: index * 0.04, ease: EASE }}
-                    className={`group relative flex items-start gap-3 border-b border-border/70 last:border-b-0 ${
+                    transition={{ duration: 0.4, delay: index * 0.03, ease: EASE }}
+                    className={`group relative flex items-start gap-2 border-b border-border/70 last:border-b-0 ${
                       selected ? "bg-surface" : ""
                     }`}
                   >
@@ -366,10 +367,10 @@ export function Workspace() {
                     <button
                       type="button"
                       onClick={() => setSelectedFilename(doc.filename)}
-                      className="flex min-w-0 flex-1 items-baseline gap-4 py-4 pl-3 text-left"
+                      className="flex min-w-0 flex-1 items-baseline gap-3 py-2.5 pl-2.5 text-left"
                     >
                       <span
-                        className={`font-display text-sm transition-colors duration-300 ${
+                        className={`font-display text-xs transition-colors duration-300 ${
                           selected ? "text-accent" : "text-muted-foreground"
                         }`}
                       >
@@ -385,7 +386,7 @@ export function Workspace() {
                         >
                           {doc.filename}
                         </span>
-                        <span className="mt-1 block text-[0.68rem] tracking-[0.08em] text-muted-foreground">
+                        <span className="mt-0.5 block text-[0.65rem] tracking-[0.06em] text-muted-foreground">
                           {doc.chunk_count} chunks
                         </span>
                       </span>
@@ -395,7 +396,7 @@ export function Workspace() {
                       aria-label={`Delete ${doc.filename}`}
                       disabled={deleting || deletingFilename !== null}
                       onClick={(event) => void handleDelete(event, doc.filename)}
-                      className="mt-4 inline-flex size-7 shrink-0 items-center justify-center text-muted-foreground/50 transition-colors duration-300 hover:text-destructive focus-visible:text-destructive disabled:pointer-events-none disabled:opacity-40"
+                      className="mt-2 inline-flex size-7 shrink-0 items-center justify-center text-muted-foreground/50 transition-colors duration-300 hover:text-destructive focus-visible:text-destructive disabled:pointer-events-none disabled:opacity-40"
                     >
                       {deleting ? (
                         <LoaderCircle className="size-3.5 animate-spin" />
@@ -409,7 +410,7 @@ export function Workspace() {
             </AnimatePresence>
 
             {documents.length === 0 && !listError ? (
-              <div className="rounded-md border border-dashed border-border bg-surface/60 px-4 py-10 text-center text-sm leading-relaxed text-muted-foreground">
+              <div className="rounded-md border border-dashed border-border bg-surface/60 px-3 py-8 text-center text-sm leading-relaxed text-muted-foreground">
                 No documents yet. Upload a PDF to begin.
               </div>
             ) : null}
@@ -417,26 +418,26 @@ export function Workspace() {
         </motion.aside>
 
         <motion.section
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.16, ease: EASE }}
-          className="flex min-h-[72vh] flex-col rounded-lg border border-border bg-card"
+          transition={{ duration: 0.55, delay: 0.1, ease: EASE }}
+          className="flex min-h-0 flex-col rounded-lg border border-border bg-card"
         >
-          <div className="flex flex-wrap items-end justify-between gap-6 border-b border-border px-5 py-5 sm:px-6">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
             <div className="min-w-0">
               <p className={LABEL_CLASS}>Selected document</p>
-              <h2 className="font-display mt-3 truncate text-2xl leading-tight sm:text-3xl">
+              <h2 className="font-display mt-1 truncate text-lg leading-tight sm:text-xl">
                 {selectedFilename ?? "No document selected"}
               </h2>
             </div>
-            <label className="flex flex-col gap-2">
+            <label className="flex shrink-0 flex-col gap-1">
               <span className={LABEL_CLASS}>Model</span>
               <select
                 value={selectedProvider}
                 onChange={(event) =>
                   setSelectedProvider(event.target.value as LlmProviderName)
                 }
-                className="min-w-36 cursor-pointer rounded-sm border border-border bg-surface px-3 py-2 text-sm text-foreground transition-colors duration-300 outline-none hover:border-accent focus:border-accent"
+                className="min-w-32 cursor-pointer rounded-sm border border-border bg-surface px-2.5 py-1.5 text-sm text-foreground transition-colors duration-300 outline-none hover:border-accent focus:border-accent"
               >
                 {providerOptions.map((item) => (
                   <option
@@ -452,16 +453,16 @@ export function Workspace() {
             </label>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-6">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-5">
             {!selectedFilename ? (
-              <p className="max-w-md text-sm leading-[1.9] text-muted-foreground">
+              <p className="max-w-md text-sm leading-[1.8] text-muted-foreground">
                 Choose a document from the library to ask questions scoped to
                 that file.
               </p>
             ) : null}
 
             {selectedFilename && turns.length === 0 ? (
-              <p className="max-w-md text-sm leading-[1.9] text-muted-foreground">
+              <p className="max-w-md text-sm leading-[1.8] text-muted-foreground">
                 Ask anything covered by this document. Answers cite the pages
                 they came from.
               </p>
@@ -471,18 +472,18 @@ export function Workspace() {
               {turns.map((turn) => (
                 <motion.article
                   key={turn.id}
-                  initial={{ opacity: 0, y: 18 }}
+                  initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.7, ease: EASE }}
-                  className="border-b border-border/50 py-8 first:pt-0 last:border-b-0"
+                  transition={{ duration: 0.55, ease: EASE }}
+                  className="border-b border-border/50 py-5 first:pt-0 last:border-b-0"
                 >
-                  <p className="font-display max-w-2xl text-xl leading-snug italic sm:text-2xl">
+                  <p className="font-display max-w-3xl text-lg leading-snug italic sm:text-xl">
                     {turn.question}
                   </p>
-                  <p className="mt-5 max-w-2xl text-[0.95rem] leading-[1.85] whitespace-pre-wrap text-foreground/85">
+                  <p className="mt-3 max-w-3xl text-[0.95rem] leading-[1.75] whitespace-pre-wrap text-foreground/85">
                     {turn.answer}
                   </p>
-                  <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.62rem] uppercase tracking-[0.22em] text-muted-foreground">
+                  <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground">
                     <span className="text-accent">
                       {turn.sources.length > 0 ? "Sources" : "No sources"}
                     </span>
@@ -504,11 +505,11 @@ export function Workspace() {
 
           <form
             onSubmit={(event) => void handleAsk(event)}
-            className="border-t border-border bg-surface/40 px-5 py-5 sm:px-6"
+            className="shrink-0 border-t border-border bg-surface/40 px-4 py-3 sm:px-5"
           >
             {providerBlockMessage ? (
               <p
-                className={`mb-4 text-xs leading-relaxed ${
+                className={`mb-2 text-xs leading-relaxed ${
                   providerConfigured
                     ? "text-muted-foreground"
                     : "text-destructive"
@@ -518,11 +519,11 @@ export function Workspace() {
               </p>
             ) : null}
             {chatError ? (
-              <p className="mb-4 text-xs leading-relaxed text-destructive">
+              <p className="mb-2 text-xs leading-relaxed text-destructive">
                 {chatError}
               </p>
             ) : null}
-            <div className="flex items-end gap-6 border-b border-border pb-4 transition-colors duration-300 focus-within:border-accent">
+            <div className="flex items-end gap-4 border-b border-border pb-3 transition-colors duration-300 focus-within:border-accent">
               <textarea
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
@@ -535,9 +536,14 @@ export function Workspace() {
                       : "Ask a question…"
                 }
                 disabled={!selectedFilename || asking || !providerConfigured}
-                className="max-h-40 min-h-14 flex-1 resize-none bg-transparent text-[0.95rem] leading-[1.7] outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+                className="max-h-32 min-h-11 flex-1 resize-none bg-transparent text-sm leading-[1.6] outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
               />
-              <Button type="submit" disabled={!canAsk} className="shrink-0">
+              <Button
+                type="submit"
+                size="sm"
+                disabled={!canAsk}
+                className="shrink-0"
+              >
                 {asking ? (
                   <LoaderCircle className="size-3.5 animate-spin" />
                 ) : null}
