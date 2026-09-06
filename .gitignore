@@ -46,6 +46,8 @@ coverage/
 .coverage
 htmlcov/
 .cursor
+.claude/
+frontend/.claude/
 
 docs/
 

@@ -1,6 +1,15 @@
 "use client";
 
-import { LoaderCircle, Trash2 } from "lucide-react";
+import {
+  ArrowUp,
+  ChevronDown,
+  FileText,
+  LoaderCircle,
+  Menu,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { FormEvent, MouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -37,9 +46,6 @@ const PROVIDER_LABELS: Record<LlmProviderName, string> = {
   openai: "OpenAI",
 };
 
-const LABEL_CLASS =
-  "text-[0.62rem] font-medium uppercase tracking-[0.32em] text-muted-foreground";
-
 function providerKeyHint(provider: LlmProviderName): string {
   return provider === "openai" ? "OPENAI_API_KEY" : "GROQ_API_KEY";
 }
@@ -52,6 +58,7 @@ function formatSize(bytes: number): string {
 
 export function Workspace() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
   const [selectedFilename, setSelectedFilename] = useState<string | null>(null);
   const [listError, setListError] = useState<string | null>(null);
@@ -66,6 +73,7 @@ export function Workspace() {
   const [llmStatusError, setLlmStatusError] = useState<string | null>(null);
   const [selectedProvider, setSelectedProvider] =
     useState<LlmProviderName>("groq");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const providerConfigured = useMemo(() => {
     if (!llmStatus) return false;
@@ -157,6 +165,13 @@ export function Workspace() {
     setQuestion("");
   }, [selectedFilename]);
 
+  useEffect(() => {
+    const node = scrollRef.current;
+    if (node) {
+      node.scrollTo({ top: node.scrollHeight, behavior: "smooth" });
+    }
+  }, [turns]);
+
   async function handleUpload(fileList: FileList | null) {
     const file = fileList?.[0];
     if (!file) return;
@@ -174,6 +189,7 @@ export function Workspace() {
         `Indexed ${response.data.filename} — ${response.data.indexed_count} chunks, ${formatSize(response.data.size)}`,
       );
       await refreshDocuments(response.data.filename);
+      setSidebarOpen(false);
     } catch (error) {
       const message =
         error instanceof ApiError ? error.message : "Upload failed.";
@@ -260,46 +276,45 @@ export function Workspace() {
   ];
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden">
-      <motion.header
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, ease: EASE }}
-        className="shrink-0 border-b border-border"
-      >
-        <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4 px-5 py-3 lg:px-8">
-          <div className="min-w-0">
-            <p className="mb-1 text-[0.55rem] font-medium uppercase tracking-[0.34em] text-accent">
-              Mesh AI
-            </p>
-            <h1 className="font-display text-2xl leading-none tracking-[-0.015em]">
-              Mesh RAG
-            </h1>
-          </div>
-          <div className="flex items-center gap-5">
-            <p className="hidden max-w-56 text-right text-[0.68rem] leading-relaxed text-muted-foreground sm:block">
-              Grounded answers from a single document, each one returned with
-              its citations.
-            </p>
-            <ThemeToggle />
-          </div>
-        </div>
-      </motion.header>
+    <div className="flex h-dvh overflow-hidden bg-background">
+      <AnimatePresence>
+        {sidebarOpen ? (
+          <motion.button
+            aria-label="Close sidebar"
+            onClick={() => setSidebarOpen(false)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-30 bg-black/30 backdrop-blur-sm lg:hidden"
+          />
+        ) : null}
+      </AnimatePresence>
 
-      <main className="mx-auto grid min-h-0 w-full max-w-[1440px] flex-1 gap-4 overflow-hidden p-4 lg:grid-cols-[minmax(240px,300px)_1fr] lg:gap-5 lg:px-8 lg:py-5">
-        <motion.aside
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, delay: 0.05, ease: EASE }}
-          className="flex min-h-0 flex-col rounded-lg border border-border bg-card p-4"
-        >
-          <div className="flex shrink-0 items-baseline justify-between gap-4">
-            <h2 className={LABEL_CLASS}>Library</h2>
-            <span className="font-display text-base leading-none text-muted-foreground">
-              {documents.length.toString().padStart(2, "0")}
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex w-[280px] shrink-0 flex-col border-r border-border bg-card transition-transform duration-300 ease-out lg:static lg:z-auto lg:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-4">
+          <div className="flex items-center gap-2.5">
+            <span className="gradient-accent flex size-8 items-center justify-center rounded-xl text-accent-foreground shadow-soft">
+              <Sparkles className="size-4" />
+            </span>
+            <span className="text-[0.95rem] font-semibold tracking-tight">
+              Mesh RAG
             </span>
           </div>
+          <button
+            type="button"
+            aria-label="Close sidebar"
+            onClick={() => setSidebarOpen(false)}
+            className="inline-flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-surface hover:text-foreground lg:hidden"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
 
+        <div className="px-4">
           <input
             ref={fileInputRef}
             type="file"
@@ -307,18 +322,18 @@ export function Workspace() {
             className="hidden"
             onChange={(event) => void handleUpload(event.target.files)}
           />
-
           <Button
-            variant="primary"
-            size="sm"
-            className="mt-3 w-full"
+            variant="outline"
+            className="w-full justify-start rounded-xl border-dashed"
             disabled={uploading}
             onClick={() => fileInputRef.current?.click()}
           >
             {uploading ? (
-              <LoaderCircle className="size-3.5 animate-spin" />
-            ) : null}
-            {uploading ? "Indexing" : "Upload PDF"}
+              <LoaderCircle className="size-4 animate-spin" />
+            ) : (
+              <FileText className="size-4" />
+            )}
+            {uploading ? "Indexing…" : "Upload PDF"}
           </Button>
 
           <AnimatePresence initial={false}>
@@ -327,8 +342,8 @@ export function Workspace() {
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.35, ease: EASE }}
-                className="mt-3 border-l border-accent pl-3 text-xs leading-relaxed text-muted-foreground"
+                transition={{ duration: 0.3, ease: EASE }}
+                className="mt-2.5 text-xs leading-relaxed text-muted-foreground"
               >
                 {uploadMessage}
               </motion.p>
@@ -336,57 +351,57 @@ export function Workspace() {
           </AnimatePresence>
 
           {listError ? (
-            <p className="mt-3 text-xs leading-relaxed text-destructive">
+            <p className="mt-2.5 text-xs leading-relaxed text-destructive">
               {listError}
             </p>
           ) : null}
+        </div>
 
-          <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
+        <div className="mt-4 flex min-h-0 flex-1 flex-col px-2 pb-4">
+          <p className="px-2.5 pb-2 text-xs font-medium tracking-wide text-muted-foreground">
+            Documents
+          </p>
+          <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-1">
             <AnimatePresence initial={false}>
-              {documents.map((doc, index) => {
+              {documents.map((doc) => {
                 const selected = doc.filename === selectedFilename;
                 const deleting = deletingFilename === doc.filename;
                 return (
                   <motion.div
                     key={doc.filename}
                     layout
-                    initial={{ opacity: 0, y: 8 }}
+                    initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.4, delay: index * 0.03, ease: EASE }}
-                    className={`group relative flex items-start gap-2 border-b border-border/70 last:border-b-0 ${
-                      selected ? "bg-surface" : ""
+                    transition={{ duration: 0.25, ease: EASE }}
+                    className={`group relative flex items-center gap-2 rounded-xl pr-1 transition-colors duration-200 ${
+                      selected
+                        ? "bg-secondary"
+                        : "hover:bg-surface"
                     }`}
                   >
-                    <span
-                      aria-hidden
-                      className={`absolute top-0 bottom-0 left-0 w-px transition-colors duration-300 ${
-                        selected ? "bg-accent" : "bg-transparent"
-                      }`}
-                    />
                     <button
                       type="button"
-                      onClick={() => setSelectedFilename(doc.filename)}
-                      className="flex min-w-0 flex-1 items-baseline gap-3 py-2.5 pl-2.5 text-left"
+                      onClick={() => {
+                        setSelectedFilename(doc.filename);
+                        setSidebarOpen(false);
+                      }}
+                      className="flex min-w-0 flex-1 items-center gap-2.5 py-2.5 pl-2.5 text-left"
                     >
-                      <span
-                        className={`font-display text-xs transition-colors duration-300 ${
-                          selected ? "text-accent" : "text-muted-foreground"
-                        }`}
-                      >
-                        {(index + 1).toString().padStart(2, "0")}
-                      </span>
+                      <FileText
+                        className={`size-4 shrink-0 ${selected ? "text-accent" : "text-muted-foreground"}`}
+                      />
                       <span className="min-w-0 flex-1">
                         <span
-                          className={`block truncate text-sm transition-colors duration-300 ${
+                          className={`block truncate text-sm ${
                             selected
-                              ? "text-foreground"
-                              : "text-muted-foreground group-hover:text-foreground"
+                              ? "font-medium text-foreground"
+                              : "text-foreground/80"
                           }`}
                         >
                           {doc.filename}
                         </span>
-                        <span className="mt-0.5 block text-[0.65rem] tracking-[0.06em] text-muted-foreground">
+                        <span className="block text-[0.7rem] text-muted-foreground">
                           {doc.chunk_count} chunks
                         </span>
                       </span>
@@ -396,7 +411,7 @@ export function Workspace() {
                       aria-label={`Delete ${doc.filename}`}
                       disabled={deleting || deletingFilename !== null}
                       onClick={(event) => void handleDelete(event, doc.filename)}
-                      className="mt-2 inline-flex size-7 shrink-0 items-center justify-center text-muted-foreground/50 transition-colors duration-300 hover:text-destructive focus-visible:text-destructive disabled:pointer-events-none disabled:opacity-40"
+                      className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground/0 transition-colors duration-200 group-hover:text-muted-foreground/60 hover:!bg-destructive/10 hover:!text-destructive disabled:pointer-events-none disabled:opacity-40"
                     >
                       {deleting ? (
                         <LoaderCircle className="size-3.5 animate-spin" />
@@ -410,34 +425,45 @@ export function Workspace() {
             </AnimatePresence>
 
             {documents.length === 0 && !listError ? (
-              <div className="rounded-md border border-dashed border-border bg-surface/60 px-3 py-8 text-center text-sm leading-relaxed text-muted-foreground">
-                No documents yet. Upload a PDF to begin.
+              <div className="mx-1 mt-2 rounded-xl border border-dashed border-border px-3 py-8 text-center text-xs leading-relaxed text-muted-foreground">
+                No documents yet.
+                <br />
+                Upload a PDF to begin.
               </div>
             ) : null}
           </div>
-        </motion.aside>
+        </div>
+      </aside>
 
-        <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, delay: 0.1, ease: EASE }}
-          className="flex min-h-0 flex-col rounded-lg border border-border bg-card"
-        >
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
-            <div className="min-w-0">
-              <p className={LABEL_CLASS}>Selected document</p>
-              <h2 className="font-display mt-1 truncate text-lg leading-tight sm:text-xl">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <button
+              type="button"
+              aria-label="Open sidebar"
+              onClick={() => setSidebarOpen(true)}
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-surface hover:text-foreground lg:hidden"
+            >
+              <Menu className="size-4.5" />
+            </button>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-foreground">
                 {selectedFilename ?? "No document selected"}
-              </h2>
+              </p>
+              <p className="hidden truncate text-xs text-muted-foreground sm:block">
+                Answers are grounded in this document only
+              </p>
             </div>
-            <label className="flex shrink-0 flex-col gap-1">
-              <span className={LABEL_CLASS}>Model</span>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
+            <div className="relative">
               <select
                 value={selectedProvider}
                 onChange={(event) =>
                   setSelectedProvider(event.target.value as LlmProviderName)
                 }
-                className="min-w-32 cursor-pointer rounded-sm border border-border bg-surface px-2.5 py-1.5 text-sm text-foreground transition-colors duration-300 outline-none hover:border-accent focus:border-accent"
+                className="h-9 w-28 cursor-pointer appearance-none truncate rounded-full border border-border bg-surface py-0 pr-7 pl-3 text-sm text-foreground transition-colors duration-200 outline-none hover:border-accent/50 focus:border-accent sm:w-auto sm:pr-8 sm:pl-3.5"
               >
                 {providerOptions.map((item) => (
                   <option
@@ -450,84 +476,123 @@ export function Workspace() {
                   </option>
                 ))}
               </select>
-            </label>
+              <ChevronDown className="pointer-events-none absolute top-1/2 right-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            </div>
+            <ThemeToggle />
           </div>
+        </header>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-5">
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-end px-4 py-6 sm:px-6">
             {!selectedFilename ? (
-              <p className="max-w-md text-sm leading-[1.8] text-muted-foreground">
-                Choose a document from the library to ask questions scoped to
-                that file.
-              </p>
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                <span className="gradient-accent flex size-12 items-center justify-center rounded-2xl text-accent-foreground shadow-soft">
+                  <Sparkles className="size-5" />
+                </span>
+                <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
+                  Choose a document from the library to ask questions scoped
+                  to that file.
+                </p>
+              </div>
             ) : null}
 
             {selectedFilename && turns.length === 0 ? (
-              <p className="max-w-md text-sm leading-[1.8] text-muted-foreground">
-                Ask anything covered by this document. Answers cite the pages
-                they came from.
-              </p>
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                <span className="gradient-accent flex size-12 items-center justify-center rounded-2xl text-accent-foreground shadow-soft">
+                  <Sparkles className="size-5" />
+                </span>
+                <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
+                  Ask anything covered by this document. Answers cite the
+                  pages they came from.
+                </p>
+              </div>
             ) : null}
 
-            <AnimatePresence initial={false}>
-              {turns.map((turn) => (
-                <motion.article
-                  key={turn.id}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.55, ease: EASE }}
-                  className="border-b border-border/50 py-5 first:pt-0 last:border-b-0"
-                >
-                  <p className="font-display max-w-3xl text-lg leading-snug italic sm:text-xl">
-                    {turn.question}
-                  </p>
-                  <p className="mt-3 max-w-3xl text-[0.95rem] leading-[1.75] whitespace-pre-wrap text-foreground/85">
-                    {turn.answer}
-                  </p>
-                  <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground">
-                    <span className="text-accent">
-                      {turn.sources.length > 0 ? "Sources" : "No sources"}
-                    </span>
-                    {turn.sources.map((source) => (
-                      <span
-                        key={`${turn.id}-${source.filename}-${source.page_number}`}
-                      >
-                        {source.filename} · p.{source.page_number}
+            <div className="space-y-6">
+              <AnimatePresence initial={false}>
+                {turns.map((turn) => (
+                  <motion.article
+                    key={turn.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.45, ease: EASE }}
+                    className="space-y-4"
+                  >
+                    <div className="flex justify-end">
+                      <p className="max-w-[80%] rounded-2xl rounded-br-md bg-secondary px-4 py-2.5 text-sm leading-relaxed text-secondary-foreground">
+                        {turn.question}
+                      </p>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <span className="gradient-accent mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full text-accent-foreground">
+                        <Sparkles className="size-4" />
                       </span>
-                    ))}
-                    <span className="ml-auto">
-                      {PROVIDER_LABELS[turn.provider]}
-                    </span>
-                  </div>
-                </motion.article>
-              ))}
-            </AnimatePresence>
+                      <div className="min-w-0 flex-1 space-y-3 pt-1">
+                        <p className="text-[0.95rem] leading-[1.75] whitespace-pre-wrap text-foreground/90">
+                          {turn.answer}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {turn.sources.map((source) => (
+                            <span
+                              key={`${turn.id}-${source.filename}-${source.page_number}`}
+                              className="rounded-full border border-border px-2.5 py-1 text-[0.7rem] text-muted-foreground"
+                            >
+                              {source.filename} · p.{source.page_number}
+                            </span>
+                          ))}
+                          <span className="ml-auto rounded-full bg-surface px-2.5 py-1 text-[0.7rem] text-muted-foreground">
+                            {PROVIDER_LABELS[turn.provider]}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.article>
+                ))}
+              </AnimatePresence>
+            </div>
           </div>
+        </div>
 
-          <form
-            onSubmit={(event) => void handleAsk(event)}
-            className="shrink-0 border-t border-border bg-surface/40 px-4 py-3 sm:px-5"
-          >
-            {providerBlockMessage ? (
-              <p
-                className={`mb-2 text-xs leading-relaxed ${
-                  providerConfigured
-                    ? "text-muted-foreground"
-                    : "text-destructive"
-                }`}
-              >
-                {providerBlockMessage}
-              </p>
-            ) : null}
-            {chatError ? (
-              <p className="mb-2 text-xs leading-relaxed text-destructive">
-                {chatError}
-              </p>
-            ) : null}
-            <div className="flex items-end gap-4 border-b border-border pb-3 transition-colors duration-300 focus-within:border-accent">
+        <div className="shrink-0 px-4 pb-4 sm:px-6">
+          <div className="mx-auto w-full max-w-3xl">
+            <AnimatePresence initial={false}>
+              {chatError ? (
+                <motion.p
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="mb-2 text-xs leading-relaxed text-destructive"
+                >
+                  {chatError}
+                </motion.p>
+              ) : null}
+              {!chatError && providerBlockMessage ? (
+                <motion.p
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="mb-2 text-xs leading-relaxed text-muted-foreground"
+                >
+                  {providerBlockMessage}
+                </motion.p>
+              ) : null}
+            </AnimatePresence>
+
+            <form
+              onSubmit={(event) => void handleAsk(event)}
+              className="shadow-float flex items-end gap-2 rounded-2xl border border-border bg-card p-2 transition-colors duration-200 focus-within:border-accent/60"
+            >
               <textarea
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
-                rows={2}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    event.currentTarget.form?.requestSubmit();
+                  }
+                }}
+                rows={1}
                 placeholder={
                   !selectedFilename
                     ? "Select a document first"
@@ -536,23 +601,24 @@ export function Workspace() {
                       : "Ask a question…"
                 }
                 disabled={!selectedFilename || asking || !providerConfigured}
-                className="max-h-32 min-h-11 flex-1 resize-none bg-transparent text-sm leading-[1.6] outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+                className="max-h-32 min-h-10 flex-1 resize-none bg-transparent px-2.5 py-2 text-sm leading-[1.6] outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
               />
               <Button
                 type="submit"
-                size="sm"
+                size="icon"
                 disabled={!canAsk}
-                className="shrink-0"
+                aria-label="Send question"
               >
                 {asking ? (
-                  <LoaderCircle className="size-3.5 animate-spin" />
-                ) : null}
-                {asking ? "Asking" : "Ask"}
+                  <LoaderCircle className="size-4 animate-spin" />
+                ) : (
+                  <ArrowUp className="size-4" />
+                )}
               </Button>
-            </div>
-          </form>
-        </motion.section>
-      </main>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
